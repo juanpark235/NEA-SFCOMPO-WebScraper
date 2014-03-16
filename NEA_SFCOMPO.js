@@ -134,3 +134,19 @@ exports.getFuelRodData = function(url, onResult) {
 	}); // end request
 	
 } // end exports fuelRod
+
+// TO DO - implement this
+// example input url: http://www.oecd-nea.org/sfcompo/Ver.2/Eng/Obrigheim/index.html
+// returns an object containing the urls for each fuel rod
+// example output: {'http://www.oecd-nea.org/sfcompo/Ver.2/search/search.pl?rosin=Obrigheim&cell=BE124&pin=D1&axis=315'}
+exports.reactor = function(url, onResult) {
+	
+	// Easy path forward:
+	// grab each link and look to see if it's the fuel rod search page (search.pl)
+	// More difficult:
+	// attempt to grab all the other data about the reactor.
+	
+	// faking output for now
+	onResult(['http://www.oecd-nea.org/sfcompo/Ver.2/search/search.pl?rosin=Obrigheim&cell=BE124&pin=D1&axis=1435']);
+
+}
