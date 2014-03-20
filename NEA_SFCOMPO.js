@@ -14,6 +14,7 @@
 // http://www.w3schools.com/jsref/jsref_substring.asp
 // http://www.w3schools.com/jsref/jsref_parsefloat.asp
 // http://stackoverflow.com/questions/1168807/how-can-i-add-a-key-value-pair-to-a-javascript-object-literal
+// https://www.digitalocean.com/community/articles/how-to-use-node-js-request-and-cheerio-to-set-up-simple-web-scraping
 
 // TO DO
 // - integrate into http://rein.pk/javascripts/posts/radioactive-js-examples.js
@@ -140,13 +141,46 @@ exports.getFuelRodData = function(url, onResult) {
 // returns an object containing the urls for each fuel rod
 // example output: {'http://www.oecd-nea.org/sfcompo/Ver.2/search/search.pl?rosin=Obrigheim&cell=BE124&pin=D1&axis=315'}
 exports.reactor = function(url, onResult) {
-	
+
 	// Easy path forward:
 	// grab each link and look to see if it's the fuel rod search page (search.pl)
 	// More difficult:
 	// attempt to grab all the other data about the reactor.
 	
-	// faking output for now
-	onResult(['http://www.oecd-nea.org/sfcompo/Ver.2/search/search.pl?rosin=Obrigheim&cell=BE124&pin=D1&axis=1435']);
+	var url = 'http://www.oecd-nea.org/sfcompo/Ver.2/Eng/Obrigheim/index.html';
+	var fuelRods = [];
+	
+	request(url, function(err, resp, body) {
+		if (err)
+			throw err;
 
-}
+		// get the body of the page we requested
+		$ = cheerio.load(body);
+
+		// get the fuel rod information
+		// find all the anchor tags
+		$('td a').each(function() { 
+		
+			//grab the href from the tag
+			var fuelRodURL = $(this).attr('href');
+			
+			if (fuelRodURL.indexOf('search.pl') > 0) {
+			
+				// translate this into an absolute URL
+				// (doing quick and dirty since we know the page we are scraping)
+				fuelRodURL = url.replace('index.html', '')+fuelRodURL;
+				
+				// debug
+				//console.log(fuelRodUrl);
+				
+				// add the url to the fuelRods array
+				fuelRods.push(fuelRodURL);
+			}
+		});
+		
+		// pass the URLs to the handler function
+		onResult(fuelRods);
+		
+	}); // end request
+
+} //end reactor
