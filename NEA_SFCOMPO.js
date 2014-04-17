@@ -1,5 +1,7 @@
-// Webscraping app to get radioactive data from http://www.oecd-nea.org/sfcompo/Ver.2/Eng/index.html
-// for use in radioactive.js visualizations
+// Webscraping app to get radioactive data from
+//	http://www.oecd-nea.org/sfcompo/Ver.2/Eng/index.html
+// For use in radioactive.js visualizations so that radioactive.js
+//	examples don't have to transpose / hardcode the data objects
 //  visualizations: http://rein.pk/radioactive-js/
 //  library: https://github.com/reinpk/radioactive
 // Copyright The Things They Coded, 2014
@@ -15,14 +17,15 @@
 // http://www.w3schools.com/jsref/jsref_parsefloat.asp
 // http://stackoverflow.com/questions/1168807/how-can-i-add-a-key-value-pair-to-a-javascript-object-literal
 // https://www.digitalocean.com/community/articles/how-to-use-node-js-request-and-cheerio-to-set-up-simple-web-scraping
+// https://github.com/cheeriojs/cheerio
 
 // TO DO
-// - integrate into http://rein.pk/javascripts/posts/radioactive-js-examples.js
-// - write upper level function to parse http://www.oecd-nea.org/sfcompo/Ver.2/Eng/Obrigheim/index.html
-//    which would then call this function for each reactor rod
-// - Then go a step up for each reactor itself
+// - Integrate into http://rein.pk/javascripts/posts/radioactive-js-examples.js
 // - Add unit tests to ensure that the expected format of the source html
 //    hasn't changed
+// - Add better error handling
+// - Add cacheing layer so that we don't have to rescrape the data every time
+//		we want to display a graph.
 
 // pre-reqs
 var request = require('request');
@@ -32,7 +35,10 @@ var E = function (exp) {
 };
 
 // get the fuel rod data that is to be used as input for the decay graph
-exports.getFuelRodData = function(url, onResult) {					
+exports.getFuelRodData = function(url, onResult) {
+
+	//debug
+	//console.log('FuleRodURL:' + url)
 
   // initialize variables
 	var radioactiveTimeSeriesData = {};
@@ -136,19 +142,18 @@ exports.getFuelRodData = function(url, onResult) {
 	
 } // end exports fuelRod
 
-// TO DO - implement this
-// example input url: http://www.oecd-nea.org/sfcompo/Ver.2/Eng/Obrigheim/index.html
-// returns an object containing the urls for each fuel rod
-// example output: {'http://www.oecd-nea.org/sfcompo/Ver.2/search/search.pl?rosin=Obrigheim&cell=BE124&pin=D1&axis=315'}
-exports.reactor = function(url, onResult) {
 
-	// Easy path forward:
-	// grab each link and look to see if it's the fuel rod search page (search.pl)
-	// More difficult:
-	// attempt to grab all the other data about the reactor.
+// example input url: http://www.oecd-nea.org/sfcompo/Ver.2/Eng/Obrigheim/index.html
+// returns an object containing information about the reactor, including an
+// object containing the data for each fuel rod
+// TO DO - make sure that the page structure is the same for each reactor!!!
+exports.reactor = function(url, onResult) {
 	
-	var url = 'http://www.oecd-nea.org/sfcompo/Ver.2/Eng/Obrigheim/index.html';
-	var fuelRods = [];
+	// TO DO - make this default if a url is not passed in
+	//var url = 'http://www.oecd-nea.org/sfcompo/Ver.2/Eng/Obrigheim/index.html';
+	
+	// this object holds all of the data and will be passed to onResult
+	var reactor = {};
 	
 	request(url, function(err, resp, body) {
 		if (err)
@@ -156,31 +161,169 @@ exports.reactor = function(url, onResult) {
 
 		// get the body of the page we requested
 		$ = cheerio.load(body);
+		
+		// get the reactor name
+		// this value happens to be in the table data, but is formatted slightly 
+		// differently so we're just going to grab it from the H1s
+		reactor['Reactor Name'] = $('h1').eq(1).text();
+		
+		// Get the reactor data from the various tables on the page
+		// (we are skipping the third table for now, per comment below)
+		$('table').each(function(tableIndex) {
+		
+			//grab reactor information from the first two tables
+			if (tableIndex == 0 || tableIndex == 1) {
+				$(this).find('tr').each(function() {
+		
+					var key = '';
+					var value = '';
+			
+					if (tableIndex == 0) {
+						// this is a goofy table where the left column is a th and the right 
+						// column is a tr, there are also th cells that span rows, we can ignore
+						// those for now.  The HTML looks like:
+						//<tr> 
+						//  <th colspan="2" class="bodytext">Reactor Name</th>
+						//  <th width="7%" class="bodytext"><i>Obrigheim</i></th>
+						//</tr>
+						//<tr> 
+						//  <th rowspan="4" width="6%" class="bodytext">Fuel Pin</th>
+						//  <th width="8%" class="bodytext">Fuel Pellet Diameter (mm)</th>
+						//  <td width="7%" class="bodytext"> 
+						//    <div align="center">9.04</div>
+						//  </td>
+						//</tr>
+						// we can grab the td from the row, and then grab the previous DOM element
+						// to get the right-most th.
+						
+						// start by finding the td element itself
+						var td = $(this).find('td');
+						
+						// the text of the td is the value for this key
+						value = td.children().eq(0).text();
+						
+						// the key is the right-most th element, which is the DOM element
+						// previous to the td where the value is stored
+						key = td.prev().text();
+						
+					}
+					else if(tableIndex == 1) {
+					// this table only uses th without any tr, so that makes sense (not).
+					// first column is the description, second is the associated value
+					//<tr> 
+					//	<th class="bodytext">Rod array</th>
+					//	<th class="bodytext">14 x 14</th>
+					//</tr>
+						$(this).find('th').each(function(column) {
+							if (column == 0)
+								key = $(this).text().trim();
+							if (column == 1)
+								value = $(this).text().trim();
+						});
+					}
+			
+					// Add the values to our reactor object
+					if(key.length > 0 && value.length > 0) {
+						reactor[key] = value;
+					}
+			
+				}); // end row traversal
+			} // end reactor tables
+			
+			// we are currently ignoring the third table
+			// 1) I don't understand it
+			// 2) it doesn't fit neatly into our key:value paradigm
+			// (at least I'm honest, right?)
+			
+			// grab fuel rod data from the fourth table
+			else if (tableIndex == 3) {
+				
+				// initiate object within the reactor
+			  reactor['fuelRodData'] = [];
+				
+				// figure out how many anchor tags there are so that we know when to 
+				// finally call the onResult (see fix note below)
+				var tableCellsFound = $(this).find('td a').length;
+				
+				// process all of the anchor tags
+				$(this).find('td a').each(function(i) { 
+		
+					//grab the href from the tag
+					var fuelRodURL = $(this).attr('href');
+			
+					// there are a few different links in the table, but the only ones
+					// we are interested in are to the search.pl page, which is the page
+					// with the fuel rod info
+					if (fuelRodURL.indexOf('search.pl') > 0) {
+			
+						// translate this into an absolute URL
+						// (doing quick and dirty since we know the page we are scraping)
+						fuelRodURL = url.replace('index.html', '')+fuelRodURL;
 
-		// get the fuel rod information
-		// find all the anchor tags
-		$('td a').each(function() { 
-		
-			//grab the href from the tag
-			var fuelRodURL = $(this).attr('href');
-			
-			if (fuelRodURL.indexOf('search.pl') > 0) {
-			
-				// translate this into an absolute URL
-				// (doing quick and dirty since we know the page we are scraping)
-				fuelRodURL = url.replace('index.html', '')+fuelRodURL;
-				
-				// debug
-				//console.log(fuelRodUrl);
-				
-				// add the url to the fuelRods array
-				fuelRods.push(fuelRodURL);
-			}
-		});
-		
-		// pass the URLs to the handler function
-		onResult(fuelRods);
+						// pass this URL into the fuel rod scraper module above to get all
+						// the data for the fuel rod and place it into the reactor object
+						exports.getFuelRodData(fuelRodURL, function (fuelRodObj) {
+						
+							// the resultant object is then added to our overall reactor object
+							reactor['fuelRodData'].push(fuelRodObj);
+							
+							// If this is the last link on the page we can now call the 
+							// overarching onResult function.
+							// FIX ME!!!! THIS ONLY WORKS IF THE LAST LINK IS TO FUEL ROD
+							// DATA.  If the last link is to something else this will never
+							// get called.  We could move the search.pl if block into this
+							// function but that seems like it breaks modularity.  
+							if ((i+1) == tableCellsFound) {
+							  onResult(reactor);
+							}
+						
+						});
+						
+					} // end if fuel rod link
+					
+				}); // end link traversal
+
+			} // end fuel rod table
+						
+		}); // end table traversal
 		
 	}); // end request
 
 } //end reactor
+
+
+// THIS IS NOT YET IMPLEMENTED OR TESTED
+/*
+exports.NEA_SFCOMPO = function(url, onResult) {
+
+	// check for non existence of this param and use this as default?
+	var url = "http://www.oecd-nea.org/sfcompo/Ver.2/Eng/index.html"
+	var SFCOMPO = [];
+	
+	request(url, function(err, resp, body) {
+		if (err)
+			throw err;
+
+		// get the body of the page we requested
+		$ = cheerio.load(body);
+		
+		$('td a').each(function() { 
+		
+			//grab the href from the tag
+			var reactorURL = $(this).attr('href');
+			
+			//debug
+			console.log(reactorURL);
+
+			// pass this URL into the reactor scraper module above to get all
+			// the data for the reactor and place it into the SFCOMPO object
+			exports.reactor(reactorURL, function(reactorObj) {
+				SFCOMPO.push(reactorObj);
+			});
+			
+		}); // end link traversal
+
+	}); // end request
+	
+}
+*/

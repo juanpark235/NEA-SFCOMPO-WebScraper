@@ -1,21 +1,20 @@
 // require the module
 var SFCOMPO = require('./NEA_SFCOMPO.js');
 
-// EXAMPLE OF FUEL ROD DATA EXPORT
-
-// this URL is taken from the table at the bottom of this page:
-// http://www.oecd-nea.org/sfcompo/Ver.2/Eng/Obrigheim/index.html
-// any of those URLs should work.
-var url = 'http://www.oecd-nea.org/sfcompo/Ver.2/search/search.pl?rosin=Gundremmingen&cell=B23&pin=A1&axis=2680';
-
-// call the function
+// EXAMPLE OF SINGLE FUEL ROD DATA EXPORT
+//  This URL is taken from the table at the bottom of this page:
+//  http://www.oecd-nea.org/sfcompo/Ver.2/Eng/Obrigheim/index.html
+//  any of those URLs should work.
+//var url = 'http://www.oecd-nea.org/sfcompo/Ver.2/search/search.pl?rosin=Gundremmingen&cell=B23&pin=A1&axis=2680';
 //SFCOMPO.getFuelRodData(url, console.log);
 
 
 // EXAMPLE OF REACTOR EXPORT
-SFCOMPO.reactor('', function(fuelRodURLs) {
+//  This URL is takes from the table on this page: 
+//  http://www.oecd-nea.org/sfcompo/Ver.2/Eng/index.html
+var url = 'http://www.oecd-nea.org/sfcompo/Ver.2/Eng/Obrigheim/index.html';
+SFCOMPO.reactor(url, console.log);
 
-	for (i=0; i < fuelRodURLs.length;i++)
-		SFCOMPO.getFuelRodData(fuelRodURLs[i], console.log);
 
-});
+// EXAMPLE OF SCRAPING THE WHOLE SITE (TBD)
+//SFCOMPO.NEA_SFCOMPO('', console.log);
