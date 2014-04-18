@@ -273,6 +273,7 @@ exports.reactor = function(url, onResult) {
 							// DATA.  If the last link is to something else this will never
 							// get called.  We could move the search.pl if block into this
 							// function but that seems like it breaks modularity.  
+							// (also does each emit an 'end'?)
 							if ((i+1) == tableCellsFound) {
 							  onResult(reactor);
 							}
@@ -293,11 +294,11 @@ exports.reactor = function(url, onResult) {
 
 
 // THIS IS NOT YET IMPLEMENTED OR TESTED
-/*
+
 exports.NEA_SFCOMPO = function(url, onResult) {
 
-	// check for non existence of this param and use this as default?
-	var url = "http://www.oecd-nea.org/sfcompo/Ver.2/Eng/index.html"
+	// TO-DO: check for non existence of this param and use this as default
+	// var url = 'http://www.oecd-nea.org/sfcompo/Ver.2/Eng/index.html'
 	var SFCOMPO = [];
 	
 	request(url, function(err, resp, body) {
@@ -307,18 +308,33 @@ exports.NEA_SFCOMPO = function(url, onResult) {
 		// get the body of the page we requested
 		$ = cheerio.load(body);
 		
-		$('td a').each(function() { 
+		// figure out how many anchor tags there are so that we know when to 
+		// finally call the onResult (see fix note below)
+		var tableCellsFound = $('td a').length;
+		
+		$('td a').each(function(i) { 
 		
 			//grab the href from the tag
 			var reactorURL = $(this).attr('href');
 			
 			//debug
-			console.log(reactorURL);
+			//console.log(url.replace('index.html', '') + reactorURL);
 
 			// pass this URL into the reactor scraper module above to get all
 			// the data for the reactor and place it into the SFCOMPO object
-			exports.reactor(reactorURL, function(reactorObj) {
+			exports.reactor(url.replace('index.html', '') + reactorURL, function(reactorObj) {
 				SFCOMPO.push(reactorObj);
+				
+				// If this is the last link on the page we can now call the 
+				// overarching onResult function.
+				// FIX ME!!!! THIS ONLY WORKS IF THE LAST LINK IS TO FUEL ROD
+				// DATA.  If the last link is to something else this will never
+				// get called.  We could move the search.pl if block into this
+				// function but that seems like it breaks modularity.  
+				// (also does each emit an 'end'?)
+				if ((i+1) == tableCellsFound) {
+					onResult(SFCOMPO);
+				}
 			});
 			
 		}); // end link traversal
@@ -326,4 +342,3 @@ exports.NEA_SFCOMPO = function(url, onResult) {
 	}); // end request
 	
 }
-*/

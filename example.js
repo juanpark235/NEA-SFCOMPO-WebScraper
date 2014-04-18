@@ -12,9 +12,10 @@ var SFCOMPO = require('./NEA_SFCOMPO.js');
 // EXAMPLE OF REACTOR EXPORT
 //  This URL is takes from the table on this page: 
 //  http://www.oecd-nea.org/sfcompo/Ver.2/Eng/index.html
-var url = 'http://www.oecd-nea.org/sfcompo/Ver.2/Eng/Obrigheim/index.html';
-SFCOMPO.reactor(url, console.log);
+//var url = 'http://www.oecd-nea.org/sfcompo/Ver.2/Eng/Obrigheim/index.html';
+//SFCOMPO.reactor(url, console.log);
 
 
 // EXAMPLE OF SCRAPING THE WHOLE SITE (TBD)
-//SFCOMPO.NEA_SFCOMPO('', console.log);
+var url = 'http://www.oecd-nea.org/sfcompo/Ver.2/Eng/index.html';
+SFCOMPO.NEA_SFCOMPO(url, console.log);
